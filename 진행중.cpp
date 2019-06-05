@@ -4,92 +4,18 @@
 #include <GL/GL.h> 
 #include <GL/GLU.h> 
 #include <Leap.h>
+#include <ctime>
 using namespace std;
 
 class MyListener : public Leap::Listener {
 public:
 	virtual void onConnect(const Leap::Controller &);
 	virtual void onFrame(const Leap::Controller &);
-	int R_S_P;
-	void game(void);
-	int random;
 };
 
-//
-//GLubyte *LoadBmp(const char *Path, int *Width, int *Height)
-//{
-//	HANDLE hFile;
-//	DWORD FileSize, dwRead;
-//	BITMAPFILEHEADER *fh = NULL;
-//	BITMAPINFOHEADER *ih;
-//	BYTE *pRaster;
-//
-//	hFile = CreateFileA(Path, GENERIC_READ, 0, NULL,
-//		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-//	if (hFile == INVALID_HANDLE_VALUE) {
-//		return NULL;
-//	}
-//
-//	FileSize = GetFileSize(hFile, NULL);
-//	fh = (BITMAPFILEHEADER *)malloc(FileSize);
-//	ReadFile(hFile, fh, FileSize, &dwRead, NULL);
-//	CloseHandle(hFile);
-//
-//	int len = FileSize - fh->bfOffBits;
-//	pRaster = (GLubyte *)malloc(len);
-//	memcpy(pRaster, (BYTE *)fh + fh->bfOffBits, len);
-//
-//	// RGB로 순서를 바꾼다.
-//
-//	for (BYTE *p = pRaster; p < pRaster + len - 3; p += 3) {
-//		BYTE b = *p;
-//		*p = *(p + 2);
-//		*(p + 2) = b;
-//	}
-//	ih = (BITMAPINFOHEADER *)((PBYTE)fh + sizeof(BITMAPFILEHEADER));
-//	*Width = ih->biWidth;
-//	*Height = ih->biHeight;
-//
-//	free(fh);
-//
-//	return pRaster;
-//}
-//
-//void DoDisplay()
-//{
-//	GLubyte *data;
-//	int Width, Height;
-//
-//	glClear(GL_COLOR_BUFFER_BIT);
-//
-//	data = LoadBmp("mogi.bmp", &Width, &Height);
-//	if (data != NULL) {
-//		glRasterPos2f(-0.5, -0.5);
-//		glDrawPixels(Width, Height, GL_RGB, GL_UNSIGNED_BYTE, data);
-//		free(data);
-//	}
-//	glFlush();
-//}
-
-//void MyDisplay() {
-//
-//	glClear(GL_COLOR_BUFFER_BIT);
-//	// GL상태변수 설정, 프레임 버퍼를 초기화 
-//	// 초기화 될 색은 glutClearColor에서 사용된 색 
-//	glViewport(0, 0, 300, 300); glColor3f(1.0, 1.0, 1.0);
-//	glBegin(GL_POLYGON);
-//
-//	// 입력요소 기본정의 
-//	glVertex2f(-0.5, -0.5);
-//	glVertex2f(0.5, -0.5);
-//	glVertex2f(0.5, 0.5);
-//	glVertex2f(-0.5, 0.5);
-//
-//	glEnd(); glFlush();
-//}
-
-
-GLfloat leap_X, leap_Y; //립모션 손의 x y 좌표
+//립모션 손의 x y 좌표
+GLfloat hand_X = 0.0f;
+GLfloat hand_Y = 0.0f;
 
 // 사각형 정보
 // # 사각형 왼쪽 윗점 (g_rectX, g_rectY)
@@ -112,14 +38,17 @@ GLfloat g_clipBoxHeight = 200.0f;
 GLfloat g_clipHalfWidth = g_clipBoxHeight;
 GLfloat g_clipHalfHeight = g_clipBoxHeight;
 
-// 시간 간격
-GLuint g_timeStep = 17u;
+// 시간 간격! 값이 클수록 버벅이는 느낌
+GLuint g_timeStep = 15u;
+
+int random = 0; // 객체가 랜덤하게 이동하기 위한 랜덤 값을 넣을 변수
 
 // 립모션이 연결되었는지 확인
 void MyListener::onConnect(const Leap::Controller &) {
 	std::cout << "Connected." << std::endl;
 }
 
+// 립모션 작동
 void MyListener::onFrame(const Leap::Controller & controller) {
 	const Leap::Frame frame = controller.frame();
 	Leap::InteractionBox iBox = frame.interactionBox();
@@ -135,14 +64,15 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	fingers[3];
 	fingers[4];
 
-	Leap::Vector leapPoint = fingers[1].stabilizedTipPosition();
-	Leap::Vector normalizedPoint =  iBox.normalizePoint(leapPoint, false);
-	float appX = normalizedPoint.x * 100;
+	Leap::Vector leapPoint = fingers[1].stabilizedTipPosition(); // 이것도 핑거 인덱스 조절?
+	Leap::Vector normalizedPoint = iBox.normalizePoint(leapPoint, false);
+
+	float appX = normalizedPoint.x * 100; // 이 숫자값 수정하면서 해야할듯
 	float appY = normalizedPoint.y * 100;
 
 	cout << appX << ", " << appY << endl;
-	leap_X = appX;
-	leap_Y = appY;
+	hand_X = appX;
+	hand_Y = appY;
 
 	// 손이 인식되지 않았을 시
 	//if (!hands[0].isValid()) {
@@ -161,55 +91,12 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 }
 
 
-
-
-// 지정한 시간뒤 호출됨
-void TimerFunc(int value)
-{
-	// 사각형을 이동시킨다.
-	g_rectX += g_xCurStep;
-	g_rectY += g_yCurStep;
-
-	// # 경계 검사 : 경계에 사각형이 부딪히면 방향을 바꾼다.
-	// 사각형 왼쪽이나 오른쪽이 클립공간을 벗어났으면
-	// 좌우 이동 벡터를 바꾼다.
-	if (g_rectX < -g_clipHalfWidth)
-	{
-		g_rectX = -g_clipHalfWidth;
-		g_xCurStep = g_step;
-	}
-	else if (g_rectX > g_clipHalfWidth - g_rectSize)
-	{
-		g_rectX = g_clipHalfWidth - g_rectSize;
-		g_xCurStep = -g_step;
-	}
-
-	// 사각형 윗쪽이나 아래쪽이 클립공간을 벗어났으면
-	// 상하 이동 벡터를 바꾼다.
-	if (g_rectY < -g_clipHalfHeight + g_rectSize)
-	{
-		g_rectY = -g_clipHalfHeight + g_rectSize;
-		g_yCurStep = g_step;
-	}
-	else if (g_rectY > g_clipHalfHeight)
-	{
-		g_rectY = g_clipHalfHeight;
-		g_yCurStep = -g_step;
-	}
-
-	// 장면을 다시 그린다.
-	glutPostRedisplay();
-
-	// 다시 타임스탭 이후에 현재 함수가 불릴 수 있도록 설정할다.
-	glutTimerFunc(g_timeStep, TimerFunc, 1);
-}
-
 // 씬 그리기
 void RenderScene(void)
 {
 	// 화면을 지우기(컬러만)
 	glClear(GL_COLOR_BUFFER_BIT);
-	
+
 	// 현재 색상을 빨강으로!
 	glColor3f(1.0f, 0.0f, 0.0f);
 
@@ -226,8 +113,7 @@ void ChangeWindowSize(GLsizei width, GLsizei height)
 {
 	// 높이가 0이면 0으로 나누는 오류에 빠지므로
 	// 1로 보정하여 예외 처리
-	if (height == 0)
-		height = 1;
+	if (height == 0) height = 1;
 
 	// 투영 행렬 설정 모드로 변경
 	glMatrixMode(GL_PROJECTION);
@@ -243,7 +129,69 @@ void ChangeWindowSize(GLsizei width, GLsizei height)
 
 	// 뷰 포트(실제 보여지는 위치/크기) 설정
 	glViewport(0, 0, width, height);
-} 
+}
+
+// 지정한 시간뒤 호출됨
+void TimerFunc(int value)
+{
+	srand((unsigned int)time(0));
+	random = rand() % 4;
+
+	// 랜덤하게 물체를 이동시킨다.
+	switch (random) {
+	case 0:
+		g_rectX += g_xCurStep;
+		g_rectY += g_yCurStep;
+		break;
+	case 1:
+		g_rectX += g_xCurStep;
+		g_rectY -= g_yCurStep;
+		break;
+	case 2:
+		g_rectX -= g_xCurStep;
+		g_rectY += g_yCurStep;
+		break;
+	case 3:
+		g_rectX -= g_xCurStep;
+		g_rectY -= g_yCurStep;
+		break;
+	default:
+		g_rectX += g_xCurStep;
+		g_rectY += g_yCurStep;
+		break;
+	}
+
+	cout << "X : " << g_rectX << "     Y : " << g_rectY << endl;
+
+	// # 경계 검사 : 경계에 사각형이 부딪히면 방향을 바꾼다.
+	// 사각형 왼쪽이나 오른쪽이 클립공간을 벗어났으면
+	// 좌우 이동 벡터를 바꾼다.
+	if (g_rectX < -g_clipHalfWidth) {
+		g_rectX = -g_clipHalfWidth;
+		g_xCurStep = g_step;
+	}
+	else if (g_rectX > g_clipHalfWidth - g_rectSize) {
+		g_rectX = g_clipHalfWidth - g_rectSize;
+		g_xCurStep = -g_step;
+	}
+
+	// 사각형 윗쪽이나 아래쪽이 클립공간을 벗어났으면
+	// 상하 이동 벡터를 바꾼다.
+	if (g_rectY < -g_clipHalfHeight + g_rectSize) {
+		g_rectY = -g_clipHalfHeight + g_rectSize;
+		g_yCurStep = g_step;
+	}
+	else if (g_rectY > g_clipHalfHeight) {
+		g_rectY = g_clipHalfHeight;
+		g_yCurStep = -g_step;
+	}
+
+	// 장면을 다시 그린다.
+	glutPostRedisplay();
+
+	// 다시 타임스탭 이후에 현재 함수가 불릴 수 있도록 설정할다.
+	glutTimerFunc(g_timeStep, TimerFunc, 1);
+}
 
 int main(int argc, char** argv)
 {
@@ -253,22 +201,20 @@ int main(int argc, char** argv)
 
 	glutInit(&argc, argv); // GLUT 윈도우 함수 
 	glutInitDisplayMode(GLUT_RGB); // 윈도우 의 기본컬러모드를 RGB모드로 설정 
-	glutInitWindowSize(300, 300); // 윈도우 사이즈 설정 
+	glutInitWindowSize(500, 500); // 윈도우 사이즈 설정 
 	glutInitWindowPosition(0, 0); // 윈도우 창 위치 설정 
-	glutCreateWindow("OpenGL example");
+	glutCreateWindow("Catch me if you can");
 
 	glClearColor(0.0, 0.0, 0.0, 1.0); // GL 상태변수 설정, 마지막 알파값은 1이면 불투명 0이면 투명 
 	//glMatrixMode(GL_PROJECTION); // glLoadIdentity(); 
 	//glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
-	//glutDisplayFunc(MyDisplay); // GLUT 콜백함수 등록 
-	//glutMainLoop(); // 이벤트 루프 진입 
 
-	glutDisplayFunc(RenderScene);
+	glutDisplayFunc(RenderScene); // GLUT 콜백함수 등록 
 	glutReshapeFunc(ChangeWindowSize);
 
 	// * 타임스템 이후에 타이머 함수가 불릴 수 있도록 설정
 	glutTimerFunc(g_timeStep, TimerFunc, 1);
-	glutMainLoop();
+	glutMainLoop(); // 이벤트 루프 진입 
 
 	return 0;
 }
