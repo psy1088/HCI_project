@@ -30,7 +30,7 @@ GLfloat g_rectSize = 10.0f;
 
 // 사각형 이동 벡터(속도 및 방향)
 // 속도 절대값
-GLfloat g_step = 1.0f;
+GLfloat g_step = 0.0f;
 // 현재 속도
 GLfloat g_xCurStep = g_step;
 GLfloat g_yCurStep = g_step;
@@ -50,6 +50,8 @@ GLuint texture[1];
 static GLuint Texture;
 
 int random = 0; // 객체가 랜덤하게 이동하기 위한 랜덤 값을 넣을 변수
+int Catch_flag = 0; // 손가락을 접었는지 확인하기 위한 변수
+
 
 // 립모션이 연결되었는지 확인
 void MyListener::onConnect(const Leap::Controller &) {
@@ -61,7 +63,7 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	const Leap::Frame frame = controller.frame();
 	Leap::InteractionBox iBox = frame.interactionBox();
 	Leap::HandList hands = frame.hands();
-	
+
 	hands[0];
 	hands[1];
 
@@ -78,34 +80,35 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	float appY = normalizedPoint.y * 50;
 
 	//cout << appX << ", " << appY << endl;
-	hand_X = appX *3;
-	hand_Y = appY *4;
+	hand_X = appX * 3;
+	hand_Y = appY * 4;
 
 	glRectf(hand_X, hand_Y, hand_X + g_rectSize, hand_Y - g_rectSize);
 
 	//손이 인식되지 않았을 시
-	//if (!hands[0].isValid()) {
-	//	std::cout << "no hands detected." << std::endl;
-	//}
-	//while (1) {
-	//	if (fingers[1].isExtended()) {
-	//		printf("펴졌쥬~~~~~~~~~~~~!");
-	//		g_step = 0.1f;
-	//	}
-	//	else if (fingers[0].isExtended() + fingers[1].isExtended() + fingers[2].isExtended() + fingers[3].isExtended() + fingers[4].isExtended() == 1) {
-	//		printf("1개!");
-	//		g_step = 5.0f;
-	//	}
-	//}
+	if (!hands[0].isValid()) {
+	//	cout << "no hands detected." << endl;
+	}
+	else { 
+		cout << "    " << endl;
+		if (fingers[0].isExtended() == 1 && fingers[1].isExtended() == 1) {  // 엄지와 검지가 둘 다 펴져있으면~
+			Catch_flag = 1;
+			//cout << Catch_flag << " 엄지 검지 !!! " << endl;
+		}
+		else if (fingers[0].isExtended() + fingers[1].isExtended() + fingers[2].isExtended() + fingers[3].isExtended() + fingers[4].isExtended() + fingers[5].isExtended() == 0) {
+			Catch_flag = 2;
+			//cout << Catch_flag << " 묵!!! " << endl;
+		}
+	}
 }
 
 // 립모션에서 손을 인식하여 손의 위치에 도형 생성
 void pointScene(GLfloat x, GLfloat y) {
 	glBegin(GL_POLYGON);
-	glVertex2f(x-1, y-1);
-	glVertex2f(x-1, y+1);
-	glVertex2f(x+1, y-1);
-	glVertex2f(x+1, y+1);
+	glVertex2f(x - 1, y - 1);
+	glVertex2f(x - 1, y + 1);
+	glVertex2f(x + 1, y - 1);
+	glVertex2f(x + 1, y + 1);
 	glEnd();
 	glFinish();
 }
@@ -188,7 +191,7 @@ void TimerFunc(int value)
 {
 	srand((unsigned int)time(0));
 	random = rand() % 8;
-	
+
 	// 랜덤하게 물체를 이동시킨다.
 	switch (random) {
 	case 0:
@@ -251,12 +254,16 @@ void TimerFunc(int value)
 	}
 
 	// 손의 좌표를 나타내는 물체가, 모기의 좌표 범위 안에 있으면~
-	if (g_rectX <= hand_X && hand_X <= g_rectX + g_rectSize) {
-		if (g_rectY - g_rectSize <= hand_Y && hand_Y <= g_rectY) {
-			cout << "@@@@@@@@@@@@@@@@ 잡았죠오 " << endl;
-		}
-	}
 
+		if (g_rectX <= hand_X && hand_X <= g_rectX + g_rectSize) {
+			if (g_rectY - g_rectSize <= hand_Y && hand_Y <= g_rectY) {
+				if (Catch_flag == 2) {
+					cout << "@@@@@@@@@@@@@@@@ 잡았죠오 " << endl;
+					PlaySound(TEXT("catch.wav"), NULL,0); // 모기 소리를 출력
+					PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_NOSTOP); // 모기 소리를 출력
+				}
+			}
+		}
 
 	// 장면을 다시 그린다.
 	glutPostRedisplay();
@@ -288,6 +295,7 @@ int main(int argc, char** argv)
 
 	// * 타임스템 이후에 타이머 함수가 불릴 수 있도록 설정
 	glutTimerFunc(g_timeStep, TimerFunc, 1);
+
 	glutMainLoop(); // 이벤트 루프 진입 
 
 	return 0;
