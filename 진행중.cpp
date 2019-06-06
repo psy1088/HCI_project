@@ -8,6 +8,7 @@
 #include <ctime>
 #include <mmsystem.h>
 #include "stb_image.h"
+#include "thinkgear.h"
 
 using namespace std;
 
@@ -16,6 +17,27 @@ public:
 	virtual void onConnect(const Leap::Controller &);
 	virtual void onFrame(const Leap::Controller &);
 };
+
+char *comPortName = NULL;            //활성화된 comport값으로 수정된 값을 가질 변수
+int connectionld = 0;            //연결된장치의 ID
+int packetsRead = 0;            //데이터를 읽어 들이는 변수
+int state = 0;               //연결된 상태 값을 받는 변수
+int ATTSt = 0;               //Attention value의 상태변수
+int MEDSt = 0;                 //Meditation value의 상태변수
+int ATTD = 0;               //Attention 데이터 값을 받는 변수
+int MEDD = 0;               //Meditation 데이터 값을 받는 변수
+
+// 모기 투명도
+GLfloat Alpha = 1.0f;
+
+// 잡은 모기 갯수 정보
+int catchWidth, catchHeight, catchNrChannels;
+unsigned char *howManyImage;
+int catchCount = 0;
+
+// HP 정보
+GLfloat HP = 190;
+LPCWSTR hpStr = TEXT("HP");
 
 //립모션 손의 x y 좌표
 GLfloat hand_X = 0.0f;
@@ -30,7 +52,7 @@ GLfloat g_rectSize = 10.0f;
 
 // 사각형 이동 벡터(속도 및 방향)
 // 속도 절대값
-GLfloat g_step = 0.0f;
+GLfloat g_step = 1.0f;
 // 현재 속도
 GLfloat g_xCurStep = g_step;
 GLfloat g_yCurStep = g_step;
@@ -46,12 +68,12 @@ GLuint g_timeStep = 17u; // 시간 간격! 값이 클수록 버벅이는 느낌
 GLubyte *pBytes; // 데이터를 가리킬 포인터
 //GLubyte *LoadDIBitmap(const char *filename, BITMAPINFO **info);
 BITMAPINFO *info;
-GLuint texture[1];
+GLuint texture[3];
 static GLuint Texture;
 
 int random = 0; // 객체가 랜덤하게 이동하기 위한 랜덤 값을 넣을 변수
 int Catch_flag = 0; // 손가락을 접었는지 확인하기 위한 변수
-
+int blood_img = 0; // 모기가 죽었을 때 이미지를 바꾸기위해
 
 // 립모션이 연결되었는지 확인
 void MyListener::onConnect(const Leap::Controller &) {
@@ -83,8 +105,6 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	hand_X = appX * 3;
 	hand_Y = appY * 4;
 
-	glRectf(hand_X, hand_Y, hand_X + g_rectSize, hand_Y - g_rectSize);
-
 	//손이 인식되지 않았을 시
 	if (!hands[0].isValid()) {
 	//	cout << "no hands detected." << endl;
@@ -113,43 +133,48 @@ void pointScene(GLfloat x, GLfloat y) {
 	glFinish();
 }
 
+// 모기 시체 생성
+//void mos_blood(GLfloat x, GLfloat y) {
+//	GLfloat blood_X = x;
+//	GLfloat blood_Y = y;
+//
+//	glBegin(GL_POLYGON);
+//	glVertex2f(blood_X - 1, blood_Y - 1);
+//	glVertex2f(blood_X - 1, blood_Y + 1);
+//	glVertex2f(blood_X + 1, blood_Y - 1);
+//	glVertex2f(blood_X + 1, blood_Y + 1);
+//}
+
+
 // 씬 그리기
 void RenderScene(void)
 {
 	// 화면을 지우기(컬러만)
 	glClear(GL_COLOR_BUFFER_BIT);
 
-	// 현재 색상을 빨강으로!
-	glColor3f(1.0f, 1.0f, 1.0f);
+	// 현재 색상
+	//glColor3f(1.0f, 1.0f, 1.0f);
 
-
-	//// 이미지 텍스쳐 부분
-	glGenTextures(1, texture);
+	   // **모기 그림
+	glGenTextures(3, texture);
 	glBindTexture(GL_TEXTURE_2D, texture[0]);
 	int width, height, nrChannels;
 	unsigned char *data = stbi_load("mogi_turn.png", &width, &height, &nrChannels, 0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	////텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
 	glBindTexture(GL_TEXTURE_2D, 0);
-
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_MODULATE);
-
 	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-
-
-	// *사각형 그리기~
-	// 사각형의 왼쪽 위점과 오른쪽 아래점은 계속 변함
-	glRectf(g_rectX, g_rectY, g_rectX + g_rectSize, g_rectY - g_rectSize);
 
 	// 이미지 텍스쳐 부분
 	glBindTexture(GL_TEXTURE_2D, texture[0]);
 	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, Alpha);
 	glTexCoord2i(0, 0); glVertex2i(g_rectX, g_rectY - g_rectSize);
 	glTexCoord2i(0, 1); glVertex2i(g_rectX, g_rectY);
 	glTexCoord2i(1, 1); glVertex2i(g_rectX + g_rectSize, g_rectY);
@@ -158,7 +183,70 @@ void RenderScene(void)
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
+	cout << "ALPHA : " << Alpha << endl;
+	//glClear(GL_COLOR_BUFFER_BIT); // GL 상태변수 설정, 마지막 알파값은 1이면 불투명 0이면 투명 
+
+	// ** HP 
+	glBindTexture(GL_TEXTURE_2D, texture[1]);
+	int hpWidth, hpHeight, hpNrChannels;
+	unsigned char *hpData = stbi_load("hpName.png", &hpWidth, &hpHeight, &hpNrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, hpWidth, hpHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, hpData);
+	////텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_MODULATE);
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[1]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glTexCoord2i(0, 0); glVertex2i(110, 100);
+	glTexCoord2i(0, 1); glVertex2i(110, 85);
+	glTexCoord2i(1, 1); glVertex2i(125, 85);
+	glTexCoord2i(1, 0); glVertex2i(125, 100);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// hp 게이지
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glRectf(125, 95, HP, 90);
+	glFlush();
+
+	// ** 잡은 모기 갯수
+	glBindTexture(GL_TEXTURE_2D, texture[2]);
+	howManyImage = stbi_load("one.png", &catchWidth, &catchHeight, &catchNrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, catchWidth, catchHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, howManyImage);
+	////텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_MODULATE);
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[2]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2i(0, 0); glVertex2i(-180, 95);
+	glTexCoord2i(0, 1); glVertex2i(-180, 80);
+	glTexCoord2i(1, 1); glVertex2i(-140, 80);
+	glTexCoord2i(1, 0); glVertex2i(-140, 95);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 	pointScene(hand_X, hand_Y);
+
+	//if (blood_img == 1) {
+	//	cout << " 블러드 1 !! " << endl;
+	//	mos_blood(hand_X, hand_Y);
+	//}
+	//blood_img = 0;
+	
 	// * 전면 버퍼와 후면버퍼를 교체
 	glutSwapBuffers();
 }
@@ -189,8 +277,24 @@ void ChangeWindowSize(GLsizei width, GLsizei height)
 // 지정한 시간뒤 호출됨
 void TimerFunc(int value)
 {
+	if (HP == 125) exit(1);
+
 	srand((unsigned int)time(0));
 	random = rand() % 8;
+
+	packetsRead = TG_ReadPackets(connectionld, -1);//연결된 기기에서 받은 데이터를 비트의 열로 변환하여 직렬로 전송합니다.
+
+	if ((packetsRead > 0)) {
+		ATTD = TG_GetValue(connectionld, TG_DATA_ATTENTION); //ATTD 값에 연결된 기기의 ID, 변환할 데이터형태로 구성된 값을 받습니다.
+	 //   MEDD = TG_GetValue(connectionld, TG_DATA_MEDITATION);//MEDD 값에 연결된 기기의 ID, 변환할 데이터형태로 구성된 값을 받습니다.
+		printf("ATT =%3d\n", ATTD);
+
+		if (ATTD == 0) Alpha = 0.0f;
+		else if (ATTD < 30) Alpha = 0.2f;
+		else if (ATTD < 50) Alpha = 0.5f;
+		else if (ATTD < 70) Alpha = 0.7f;
+		else Alpha = 1.0f;
+	}
 
 	// 랜덤하게 물체를 이동시킨다.
 	switch (random) {
@@ -261,9 +365,14 @@ void TimerFunc(int value)
 					cout << "@@@@@@@@@@@@@@@@ 잡았죠오 " << endl;
 					PlaySound(TEXT("catch.wav"), NULL,0); // 모기 소리를 출력
 					PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_NOSTOP); // 모기 소리를 출력
+
+					//blood_img = 1;
 				}
 			}
 		}
+
+	// HP 감소
+	if (HP > 125) HP = HP - 0.01;
 
 	// 장면을 다시 그린다.
 	glutPostRedisplay();
@@ -274,6 +383,12 @@ void TimerFunc(int value)
 
 int main(int argc, char** argv)
 {
+	connectionld = TG_GetNewConnectionId();//connectionId 값에 연결될 기기에 관한 새로운 ID를 부여한다
+	comPortName = (char*)"\\\\.\\COM3";
+	state = TG_Connect(connectionld, comPortName, TG_BAUD_57600, TG_STREAM_PACKETS);
+	if (!state) cout << "connect success!" << endl;
+	else cout << "connect fail." << endl;
+
 	PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_LOOP); // 모기 소리를 출력
 
 	Leap::Controller controller;
@@ -287,8 +402,6 @@ int main(int argc, char** argv)
 	glutCreateWindow("Catch me if you can");
 
 	glClearColor(0.0, 0.0, 0.0, 1.0); // GL 상태변수 설정, 마지막 알파값은 1이면 불투명 0이면 투명 
-	//glMatrixMode(GL_PROJECTION); // glLoadIdentity(); 
-	//glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
 
 	glutDisplayFunc(RenderScene); // GLUT 콜백함수 등록 
 	glutReshapeFunc(ChangeWindowSize);
@@ -297,6 +410,8 @@ int main(int argc, char** argv)
 	glutTimerFunc(g_timeStep, TimerFunc, 1);
 
 	glutMainLoop(); // 이벤트 루프 진입 
+
+	cout << "잡은 모기의 갯수 : " << catchCount << endl;
 
 	return 0;
 }
