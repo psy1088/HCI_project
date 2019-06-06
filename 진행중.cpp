@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include <iostream>
 #include <stdlib.h> 
 #include <GL/glut.h> 
@@ -5,6 +6,9 @@
 #include <GL/GLU.h> 
 #include <Leap.h>
 #include <ctime>
+#include <mmsystem.h>
+#include "stb_image.h"
+
 using namespace std;
 
 class MyListener : public Leap::Listener {
@@ -22,11 +26,11 @@ GLfloat hand_Y = 0.0f;
 // # 사각형 오른쪽 아래점 (g_rectX + g_rectSize, g_rectY - g_rectSize)
 GLfloat g_rectX = 0.0f;
 GLfloat g_rectY = 0.0f;
-GLfloat g_rectSize = 25.0f;
+GLfloat g_rectSize = 10.0f;
 
 // 사각형 이동 벡터(속도 및 방향)
 // 속도 절대값
-GLfloat g_step = 2.0f;
+GLfloat g_step = 1.0f;
 // 현재 속도
 GLfloat g_xCurStep = g_step;
 GLfloat g_yCurStep = g_step;
@@ -38,8 +42,12 @@ GLfloat g_clipBoxHeight = 200.0f;
 GLfloat g_clipHalfWidth = g_clipBoxHeight;
 GLfloat g_clipHalfHeight = g_clipBoxHeight;
 
-// 시간 간격! 값이 클수록 버벅이는 느낌
-GLuint g_timeStep = 15u;
+GLuint g_timeStep = 17u; // 시간 간격! 값이 클수록 버벅이는 느낌
+GLubyte *pBytes; // 데이터를 가리킬 포인터
+//GLubyte *LoadDIBitmap(const char *filename, BITMAPINFO **info);
+BITMAPINFO *info;
+GLuint texture[1];
+static GLuint Texture;
 
 int random = 0; // 객체가 랜덤하게 이동하기 위한 랜덤 값을 넣을 변수
 
@@ -53,7 +61,7 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	const Leap::Frame frame = controller.frame();
 	Leap::InteractionBox iBox = frame.interactionBox();
 	Leap::HandList hands = frame.hands();
-
+	
 	hands[0];
 	hands[1];
 
@@ -63,24 +71,25 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	fingers[2];
 	fingers[3];
 	fingers[4];
-
 	Leap::Vector leapPoint = fingers[1].stabilizedTipPosition(); // 이것도 핑거 인덱스 조절?
 	Leap::Vector normalizedPoint = iBox.normalizePoint(leapPoint, false);
 
-	float appX = normalizedPoint.x * 100; // 이 숫자값 수정하면서 해야할듯
-	float appY = normalizedPoint.y * 100;
+	float appX = normalizedPoint.x * 50; // 이 숫자값 수정하면서 해야할듯
+	float appY = normalizedPoint.y * 50;
 
-	cout << appX << ", " << appY << endl;
-	hand_X = appX;
-	hand_Y = appY;
+	//cout << appX << ", " << appY << endl;
+	hand_X = appX *3;
+	hand_Y = appY *4;
 
-	// 손이 인식되지 않았을 시
+	glRectf(hand_X, hand_Y, hand_X + g_rectSize, hand_Y - g_rectSize);
+
+	//손이 인식되지 않았을 시
 	//if (!hands[0].isValid()) {
 	//	std::cout << "no hands detected." << std::endl;
 	//}
 	//while (1) {
-	//	if (fingers[0].isExtended() + fingers[1].isExtended() + fingers[2].isExtended() + fingers[3].isExtended() + fingers[4].isExtended() == 0) {
-	//		printf("0개!");
+	//	if (fingers[1].isExtended()) {
+	//		printf("펴졌쥬~~~~~~~~~~~~!");
 	//		g_step = 0.1f;
 	//	}
 	//	else if (fingers[0].isExtended() + fingers[1].isExtended() + fingers[2].isExtended() + fingers[3].isExtended() + fingers[4].isExtended() == 1) {
@@ -90,6 +99,16 @@ void MyListener::onFrame(const Leap::Controller & controller) {
 	//}
 }
 
+// 립모션에서 손을 인식하여 손의 위치에 도형 생성
+void pointScene(GLfloat x, GLfloat y) {
+	glBegin(GL_POLYGON);
+	glVertex2f(x-1, y-1);
+	glVertex2f(x-1, y+1);
+	glVertex2f(x+1, y-1);
+	glVertex2f(x+1, y+1);
+	glEnd();
+	glFinish();
+}
 
 // 씬 그리기
 void RenderScene(void)
@@ -98,12 +117,45 @@ void RenderScene(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// 현재 색상을 빨강으로!
-	glColor3f(1.0f, 0.0f, 0.0f);
+	glColor3f(1.0f, 1.0f, 1.0f);
+
+
+	//// 이미지 텍스쳐 부분
+	glGenTextures(1, texture);
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	int width, height, nrChannels;
+	unsigned char *data = stbi_load("mogi_turn.png", &width, &height, &nrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	////텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_MODULATE);
+
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+
 
 	// *사각형 그리기~
 	// 사각형의 왼쪽 위점과 오른쪽 아래점은 계속 변함
 	glRectf(g_rectX, g_rectY, g_rectX + g_rectSize, g_rectY - g_rectSize);
 
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2i(0, 0); glVertex2i(g_rectX, g_rectY - g_rectSize);
+	glTexCoord2i(0, 1); glVertex2i(g_rectX, g_rectY);
+	glTexCoord2i(1, 1); glVertex2i(g_rectX + g_rectSize, g_rectY);
+	glTexCoord2i(1, 0); glVertex2i(g_rectX + g_rectSize, g_rectY - g_rectSize);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	pointScene(hand_X, hand_Y);
 	// * 전면 버퍼와 후면버퍼를 교체
 	glutSwapBuffers();
 }
@@ -135,8 +187,8 @@ void ChangeWindowSize(GLsizei width, GLsizei height)
 void TimerFunc(int value)
 {
 	srand((unsigned int)time(0));
-	random = rand() % 4;
-
+	random = rand() % 8;
+	
 	// 랜덤하게 물체를 이동시킨다.
 	switch (random) {
 	case 0:
@@ -155,13 +207,25 @@ void TimerFunc(int value)
 		g_rectX -= g_xCurStep;
 		g_rectY -= g_yCurStep;
 		break;
+	case 4:
+		g_rectX += g_xCurStep;
+		break;
+	case 5:
+		g_rectX -= g_xCurStep;
+		break;
+	case 6:
+		g_rectY += g_yCurStep;
+		break;
+	case 7:
+		g_rectY -= g_yCurStep;
+		break;
 	default:
 		g_rectX += g_xCurStep;
 		g_rectY += g_yCurStep;
 		break;
 	}
 
-	cout << "X : " << g_rectX << "     Y : " << g_rectY << endl;
+	//cout << "X : " << g_rectX << "     Y : " << g_rectY << endl;
 
 	// # 경계 검사 : 경계에 사각형이 부딪히면 방향을 바꾼다.
 	// 사각형 왼쪽이나 오른쪽이 클립공간을 벗어났으면
@@ -186,6 +250,14 @@ void TimerFunc(int value)
 		g_yCurStep = -g_step;
 	}
 
+	// 손의 좌표를 나타내는 물체가, 모기의 좌표 범위 안에 있으면~
+	if (g_rectX <= hand_X && hand_X <= g_rectX + g_rectSize) {
+		if (g_rectY - g_rectSize <= hand_Y && hand_Y <= g_rectY) {
+			cout << "@@@@@@@@@@@@@@@@ 잡았죠오 " << endl;
+		}
+	}
+
+
 	// 장면을 다시 그린다.
 	glutPostRedisplay();
 
@@ -195,13 +267,15 @@ void TimerFunc(int value)
 
 int main(int argc, char** argv)
 {
+	PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_LOOP); // 모기 소리를 출력
+
 	Leap::Controller controller;
 	MyListener listener;
 	controller.addListener(listener);
 
 	glutInit(&argc, argv); // GLUT 윈도우 함수 
 	glutInitDisplayMode(GLUT_RGB); // 윈도우 의 기본컬러모드를 RGB모드로 설정 
-	glutInitWindowSize(500, 500); // 윈도우 사이즈 설정 
+	glutInitWindowSize(1000, 500); // 윈도우 사이즈 설정 
 	glutInitWindowPosition(0, 0); // 윈도우 창 위치 설정 
 	glutCreateWindow("Catch me if you can");
 
