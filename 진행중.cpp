@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "헤더.h"
 
 // 0: 시작 화면, 1: 게임 화면, 2: 게임 종료
@@ -39,8 +40,8 @@ void FirstScene(void)
 void RenderScene(void)
 {
 	if (ch == 0) {
-		glClear(GL_COLOR_BUFFER_BIT); 
-		FirstScene(); 
+		glClear(GL_COLOR_BUFFER_BIT);
+		FirstScene();
 		Draw_hand_point_Rock(hand_X, hand_Y);
 	}
 	else if (ch == 1) {
@@ -61,6 +62,7 @@ void RenderScene(void)
 		}
 	}
 	else if (ch == 2) {
+		glClear(GL_COLOR_BUFFER_BIT);
 		Draw_score();
 	}
 
@@ -72,7 +74,7 @@ void RenderScene(void)
 		Draw_hand_point_Rock(hand_X, hand_Y);
 	}
 
-	glutSwapBuffers(); 	// 전면 버퍼와 후면버퍼를 교체
+	glutSwapBuffers();    // 전면 버퍼와 후면버퍼를 교체
 }
 
 // 지정한 시간뒤 호출됨
@@ -87,7 +89,8 @@ void TimerFunc(int value)
 
 	if (itemTime <= 0) {
 		if ((packetsRead > 0)) {
-			recoverAlpha = 0.0f; lightAlpha = 0.0f;
+
+			ATTAlpha = 0.0f; recoverAlpha = 0.0f; lightAlpha = 0.0f;
 
 			ATTD = TG_GetValue(connectionld, TG_DATA_ATTENTION); //ATTD 값에 연결된 기기의 ID, 변환할 데이터형태로 구성된 값을 받습니다.
 			printf("ATT =%3d\n", ATTD);
@@ -98,18 +101,19 @@ void TimerFunc(int value)
 			else if (ATTD < 70) Alpha = 0.7f;
 			else Alpha = 1.0f;
 
-			if (ATTD == 100) {
-				itemTime = 150;
-				ATTAlpha = 1.0f;
+			if (ATTD > 50) {
+				itemTime = 20;
 				int randomItem = rand() % 2;
 				if (randomItem) { recoverAlpha = 1.0f; lightAlpha = 0.0f; }
-				else { ATTAlpha = 0.0f; recoverAlpha = 0.0f; lightAlpha = 1.0f; }
+				else { recoverAlpha = 0.0f; lightAlpha = 1.0f; }
 			}
 		}
 	}
 	else {
+
+		ATTAlpha = 1.0f;
 		if (recoverAlpha == 1.0f) {
-			if (HP < 190) HP = HP + 0.03f;
+			if (HP < 190) HP = HP + 0.3f;
 		}
 		if (lightAlpha == 1.0f) {
 			Alpha = 1.0f;
@@ -185,8 +189,8 @@ void TimerFunc(int value)
 				cout << "@@@@@@@@@@@@@@@@ 잡았죠오 " << endl;
 				PlaySound(TEXT("Slap.wav"), NULL, 0); // 잡았다는 소리를 출력
 				PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_NOSTOP | SND_LOOP); // 모기 소리를 출력
-				blood_mogi[i].x = g_rectX + g_rectSize/2.0; // 잡았을 때의 모기 좌표를 저장
-				blood_mogi[i].y = g_rectY - g_rectSize/2.0;
+				blood_mogi[i].x = g_rectX + g_rectSize / 2.0; // 잡았을 때의 모기 좌표를 저장
+				blood_mogi[i].y = g_rectY - g_rectSize / 2.0;
 				blood_img = 1;
 				catchCount++;
 				howManycatchImage = catchImage[catchCount];
@@ -194,7 +198,7 @@ void TimerFunc(int value)
 		}
 	}
 	// HP 감소
-	if (HP > 125.0f) HP = HP - 0.01f;
+	if (HP > 125.0f) HP = HP - 0.1f;
 
 	// 장면을 다시 그린다.
 	glutPostRedisplay();
@@ -208,7 +212,7 @@ int main(int argc, char** argv)
 {
 	// 마인드웨이브 연결부
 	connectionld = TG_GetNewConnectionId();//connectionId 값에 연결될 기기에 관한 새로운 ID를 부여한다
-	comPortName = (char*)"\\\\.\\COM9";
+	comPortName = (char*)"\\\\.\\COM3";
 	state = TG_Connect(connectionld, comPortName, TG_BAUD_57600, TG_STREAM_PACKETS);
 	if (!state) cout << "connect success!" << endl;
 	else cout << "connect fail." << endl;

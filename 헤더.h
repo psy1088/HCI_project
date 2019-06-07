@@ -124,7 +124,7 @@ int Catch_flag = 0; // 손가락을 접었는지 확인하기 위한 변수
 int blood_img = 0; // 모기가 죽었을 때 이미지를 바꾸기위해
 
 
-				   
+
 // *********************************** 립모션 부분 *********************************//
 
 void MyListener::onConnect(const Leap::Controller &) { // 립모션이 연결되었는지 확인
@@ -145,7 +145,7 @@ void MyListener::onFrame(const Leap::Controller & controller) { // 립모션 작동
 	fingers[2];
 	fingers[3];
 	fingers[4];
-	Leap::Vector leapPoint = fingers[1].stabilizedTipPosition(); 
+	Leap::Vector leapPoint = fingers[1].stabilizedTipPosition();
 	Leap::Vector normalizedPoint = iBox.normalizePoint(leapPoint, false);
 
 	float appX = normalizedPoint.x * 50; // 이 숫자값 수정하면서 해야할듯
@@ -157,7 +157,7 @@ void MyListener::onFrame(const Leap::Controller & controller) { // 립모션 작동
 
 	//손이 인식되지 않았을 시
 	if (!hands[0].isValid()) {
-		//	cout << "no hands detected." << endl;
+		//   cout << "no hands detected." << endl;
 	}
 	else {
 		cout << "    " << endl;
@@ -213,10 +213,10 @@ void Draw_hand_point_Rock(GLfloat x, GLfloat y) {
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_POLYGON);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexCoord2i(0, 0); glVertex2i(x-7, y-7);
-	glTexCoord2i(0, 1); glVertex2i(x-7, y+7);
-	glTexCoord2i(1, 1); glVertex2i(x+7, y+7);
-	glTexCoord2i(1, 0); glVertex2i(x+7, y-7);
+	glTexCoord2i(0, 0); glVertex2i(x - 7, y - 7);
+	glTexCoord2i(0, 1); glVertex2i(x - 7, y + 7);
+	glTexCoord2i(1, 1); glVertex2i(x + 7, y + 7);
+	glTexCoord2i(1, 0); glVertex2i(x + 7, y - 7);
 
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
@@ -370,7 +370,7 @@ void Draw_Item() {
 	// 집중도
 	glBindTexture(GL_TEXTURE_2D, texture[4]);
 	int Width, Height, NrChannels;
-	unsigned char *attention = stbi_load("attention.png", &Width, &Height, &NrChannels, 0);
+	unsigned char *attention = stbi_load("Attention.png", &Width, &Height, &NrChannels, 0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, attention);
 	////텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -463,7 +463,7 @@ void Draw_score() {
 	glTexCoord2i(0, 0); glVertex2i(-70, 50);
 	glTexCoord2i(0, 1); glVertex2i(-70, -10);
 	glTexCoord2i(1, 1); glVertex2i(60, -10);
-	glTexCoord2i(1, 0); glVertex2i(60, -50);
+	glTexCoord2i(1, 0); glVertex2i(60, 50);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
