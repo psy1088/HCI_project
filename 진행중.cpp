@@ -6,15 +6,23 @@ void RenderScene(void)
 	glClear(GL_COLOR_BUFFER_BIT); // 화면을 지우기(컬러만)
 
 	//glColor3f(1.0f, 1.0f, 1.0f); // 현재 색상
-
-	Draw_mogi();
+	Draw_Background();
+	if (HP > 125.0f) Draw_mogi();
+	Draw_Item();
 	Draw_HP();
 	Draw_mogi_count();
-	Draw_hand_point(hand_X, hand_Y);
 
-	if (blood_img == 1) {
+	if (blood_img == 1) { // 모기를 잡았으면, 해당 위치에 모기 시체 이미지 그리기
 		Draw_blood_mogi(blood_mogi[i].x, blood_mogi[i].y);
-		i++;
+		//i++;
+	}
+
+	// 손모양이 가위인지, 주먹인지에 따라 그림 다르게~
+	if (Catch_flag == Scissors) {
+		Draw_hand_point_Scissors(hand_X, hand_Y);
+	}
+	else if (Catch_flag == Rock) {
+		Draw_hand_point_Rock(hand_X, hand_Y);
 	}
 
 	glutSwapBuffers(); 	// 전면 버퍼와 후면버퍼를 교체
@@ -25,27 +33,45 @@ void TimerFunc(int value)
 {
 	blood_img = 0;
 
-	if (HP == 125) exit(1);
-
 	srand((unsigned int)time(0));
-	random = rand() % 8;
+	Random_course = rand() % 8;
 
 	//packetsRead = TG_ReadPackets(connectionld, -1);//연결된 기기에서 받은 데이터를 비트의 열로 변환하여 직렬로 전송합니다.
 
-	//if ((packetsRead > 0)) {
-	//	ATTD = TG_GetValue(connectionld, TG_DATA_ATTENTION); //ATTD 값에 연결된 기기의 ID, 변환할 데이터형태로 구성된 값을 받습니다.
-	// //   MEDD = TG_GetValue(connectionld, TG_DATA_MEDITATION);//MEDD 값에 연결된 기기의 ID, 변환할 데이터형태로 구성된 값을 받습니다.
-	//	printf("ATT =%3d\n", ATTD);
+	//if (itemTime <= 0) {
+	//	if ((packetsRead > 0)) {
+	//		recoverAlpha = 0.0f; lightAlpha = 0.0f;
 
-	//	if (ATTD == 0) Alpha = 0.0f;
-	//	else if (ATTD < 30) Alpha = 0.2f;
-	//	else if (ATTD < 50) Alpha = 0.5f;
-	//	else if (ATTD < 70) Alpha = 0.7f;
-	//	else Alpha = 1.0f;
+	//		ATTD = TG_GetValue(connectionld, TG_DATA_ATTENTION); //ATTD 값에 연결된 기기의 ID, 변환할 데이터형태로 구성된 값을 받습니다.
+	//		printf("ATT =%3d\n", ATTD);
+
+	//		if (ATTD == 0) Alpha = 0.0f;
+	//		else if (ATTD < 30) Alpha = 0.2f;
+	//		else if (ATTD < 50) Alpha = 0.5f;
+	//		else if (ATTD < 70) Alpha = 0.7f;
+	//		else Alpha = 1.0f;
+
+	//		if (ATTD == 100) {
+	//			itemTime = 150;
+	//			ATTAlpha = 1.0f;
+	//			int randomItem = rand() % 2;
+	//			if (randomItem) { recoverAlpha = 1.0f; lightAlpha = 0.0f; }
+	//			else { ATTAlpha = 0.0f; recoverAlpha = 0.0f; lightAlpha = 1.0f; }
+	//		}
+	//	}
+	//}
+	//else {
+	//	if (recoverAlpha == 1.0f) {
+	//		if (HP < 190) HP = HP + 0.03f;
+	//	}
+	//	if (lightAlpha == 1.0f) {
+	//		Alpha = 1.0f;
+	//	}
+	//	itemTime = itemTime - 0.5f;
 	//}
 
-	// 랜덤하게 물체를 이동시킨다.
-	switch (random) {
+	// 랜덤하게 모기를 이동시킨다.
+	switch (Random_course) {
 	case 0:
 		g_rectX += g_xCurStep;
 		g_rectY += g_yCurStep;
@@ -108,20 +134,20 @@ void TimerFunc(int value)
 	// 손의 좌표를 나타내는 물체가, 모기의 좌표 범위 안에 있을 때~
 	if (g_rectX <= hand_X && hand_X <= g_rectX + g_rectSize) {
 		if (g_rectY - g_rectSize <= hand_Y && hand_Y <= g_rectY) {
-
-			if (Catch_flag == 2) { // 손가락을 다 접었다면~
+			if (Catch_flag == Rock) { // 손가락을 다 접었다면~
 				cout << "@@@@@@@@@@@@@@@@ 잡았죠오 " << endl;
-				PlaySound(TEXT("catch.wav"), NULL, SND_ASYNC); // 잡았다는 소리를 출력
-				PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_NOSTOP); // 모기 소리를 출력
+				PlaySound(TEXT("Slap.wav"), NULL, 0); // 잡았다는 소리를 출력
+				PlaySound(TEXT("sound.wav"), NULL, SND_ASYNC | SND_NOSTOP | SND_LOOP); // 모기 소리를 출력
 				blood_mogi[i].x = g_rectX + g_rectSize/2.0; // 잡았을 때의 모기 좌표를 저장
 				blood_mogi[i].y = g_rectY - g_rectSize/2.0;
-				blood_img = 1; 
-
+				blood_img = 1;
+				catchCount++;
+				howManycatchImage = catchImage[catchCount];
 			}
 		}
 	}
 	// HP 감소
-	if (HP > 125) HP = HP - 0.01;
+	if (HP > 125.0f) HP = HP - 0.01f;
 
 	// 장면을 다시 그린다.
 	glutPostRedisplay();
@@ -135,7 +161,7 @@ int main(int argc, char** argv)
 {
 	//// 마인드웨이브 연결부
 	//connectionld = TG_GetNewConnectionId();//connectionId 값에 연결될 기기에 관한 새로운 ID를 부여한다
-	//comPortName = (char*)"\\\\.\\COM3";
+	//comPortName = (char*)"\\\\.\\COM4";
 	//state = TG_Connect(connectionld, comPortName, TG_BAUD_57600, TG_STREAM_PACKETS);
 	//if (!state) cout << "connect success!" << endl;
 	//else cout << "connect fail." << endl;
