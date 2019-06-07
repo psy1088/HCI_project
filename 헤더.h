@@ -99,7 +99,7 @@ GLfloat g_rectSize = 10.0f;
 
 // 사각형 이동 벡터(속도 및 방향)
 // 속도 절대값
-GLfloat g_step = 3.0f;
+GLfloat g_step = 0.0f;
 // 현재 속도
 GLfloat g_xCurStep = g_step;
 GLfloat g_yCurStep = g_step;
@@ -115,7 +115,7 @@ GLuint g_timeStep = 17u; // 시간 간격! 값이 클수록 버벅이는 느낌
 //GLubyte *pBytes; // 데이터를 가리킬 포인터
 //GLubyte *LoadDIBitmap(const char *filename, BITMAPINFO **info);
 BITMAPINFO *info;
-GLuint texture[10];
+GLuint texture[12];
 static GLuint Texture;
 
 int Random_course = 0; // 객체가 랜덤하게 이동하기 위한 랜덤 값을 넣을 변수
@@ -149,7 +149,7 @@ void MyListener::onFrame(const Leap::Controller & controller) { // 립모션 작동
 	Leap::Vector normalizedPoint = iBox.normalizePoint(leapPoint, false);
 
 	float appX = normalizedPoint.x * 50; // 이 숫자값 수정하면서 해야할듯
-	float appY = normalizedPoint.y * 50;
+	float appY = normalizedPoint.y * 50 - 7;
 
 	//cout << appX << ", " << appY << endl;
 	hand_X = appX * 3;
@@ -370,7 +370,7 @@ void Draw_Item() {
 	// 집중도
 	glBindTexture(GL_TEXTURE_2D, texture[4]);
 	int Width, Height, NrChannels;
-	unsigned char *attention = stbi_load("Attention.png", &Width, &Height, &NrChannels, 0);
+	unsigned char *attention = stbi_load("attention.png", &Width, &Height, &NrChannels, 0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, attention);
 	////텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -442,6 +442,56 @@ void Draw_Item() {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+// 점수 화면
+void Draw_score() {
+	glBindTexture(GL_TEXTURE_2D, texture[11]);
+	int width, height, NrChannels;
+	unsigned char *gameEnd = stbi_load("GameEnd.png", &width, &height, &NrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, gameEnd);
+	//텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_MODULATE);
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[11]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glTexCoord2i(0, 0); glVertex2i(-70, 50);
+	glTexCoord2i(0, 1); glVertex2i(-70, -10);
+	glTexCoord2i(1, 1); glVertex2i(60, -10);
+	glTexCoord2i(1, 0); glVertex2i(60, -50);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glBindTexture(GL_TEXTURE_2D, texture[12]);
+	unsigned char *score = stbi_load(howManycatchImage, &width, &height, &NrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, score);
+	//텍스처 wrapping/filtering 옵션 설정(현재 바인딩된 텍스처 객체에 대해)
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, GL_MODULATE);
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[12]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glTexCoord2i(0, 0); glVertex2i(-50, -30);
+	glTexCoord2i(0, 1); glVertex2i(-50, -70);
+	glTexCoord2i(1, 1); glVertex2i(30, -70);
+	glTexCoord2i(1, 0); glVertex2i(30, -30);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 
 // 배경
 void Draw_Background() {
@@ -466,4 +516,82 @@ void Draw_Background() {
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+
+// 시작 화면 그리기
+void Draw_difficulty() {
+	glBindTexture(GL_TEXTURE_2D, texture[7]);
+	int width, height, nrChannels;
+	unsigned char *data = stbi_load("GameStart.png", &width, &height, &nrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+	// Game Start 부분
+	glBindTexture(GL_TEXTURE_2D, texture[7]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+	glTexCoord2i(0, 0); glVertex2i(-70, 50);
+	glTexCoord2i(0, 1); glVertex2i(-70, -10);
+	glTexCoord2i(1, 1); glVertex2i(60, -10);
+	glTexCoord2i(1, 0); glVertex2i(60, 50);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+
+
+
+	glBindTexture(GL_TEXTURE_2D, texture[8]);
+	unsigned char *data2 = stbi_load("high.png", &width, &height, &nrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data2);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[8]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2i(0, 0); glVertex2i(-70, -20);
+	glTexCoord2i(0, 1); glVertex2i(-70, -45);
+	glTexCoord2i(1, 1); glVertex2i(-30, -45);
+	glTexCoord2i(1, 0); glVertex2i(-30, -20);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+
+
+	glBindTexture(GL_TEXTURE_2D, texture[9]);
+	unsigned char *data3 = stbi_load("medium.png", &width, &height, &nrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data3);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[9]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2i(0, 0); glVertex2i(-20, -20);
+	glTexCoord2i(0, 1); glVertex2i(-20, -45);
+	glTexCoord2i(1, 1); glVertex2i(20, -45);
+	glTexCoord2i(1, 0); glVertex2i(20, -20);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+
+	glBindTexture(GL_TEXTURE_2D, texture[10]);
+	unsigned char *data4 = stbi_load("low.png", &width, &height, &nrChannels, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data4);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// 이미지 텍스쳐 부분
+	glBindTexture(GL_TEXTURE_2D, texture[10]);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2i(0, 0); glVertex2i(30, -20);
+	glTexCoord2i(0, 1); glVertex2i(30, -45);
+	glTexCoord2i(1, 1); glVertex2i(70, -45);
+	glTexCoord2i(1, 0); glVertex2i(70, -20);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
 }
