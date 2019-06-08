@@ -20,19 +20,24 @@ public:
 	virtual void onFrame(const Leap::Controller &);
 };
 
-class Blood_mogi {
+class Blood_mogi {  // @@@@@@@@@@@@  이거 지우고 걍 좌표로 쓰기
 public:
 	GLfloat x;
 	GLfloat y;
 };
 
-//그리기 함수들
-void Draw_mogi();
-void Draw_HP();
-void Draw_mogi_count();
-void Draw_hand_point_Scissors(GLfloat x, GLfloat y);
-void Draw_hand_point_Rock(GLfloat x, GLfloat y);
-void Draw_blood_mogi(GLfloat x, GLfloat y);
+/*********************그리기 함수들********************************/
+void Draw_hand_point_Scissors(GLfloat x, GLfloat y); //집게손 이미지
+void Draw_hand_point_Rock(GLfloat x, GLfloat y); //주먹 이미지
+void Draw_blood_mogi(GLfloat x, GLfloat y); //모기 죽은 후의 이미지
+void Draw_mogi(); //모기 이미지
+void Draw_HP(); // HP칸 이미지
+void Draw_mogi_count(); // 모기 잡은 횟수 이미지
+void Draw_Background(); // 배경 이미지
+void Draw_Item(); // 아이템 이미지
+void Draw_score(); // 점수 이미지
+void Draw_difficulty(); // 난이도 이미지
+
 
 Blood_mogi blood_mogi[100]; // 모기 잡기 가능횟수
 
@@ -44,9 +49,9 @@ int ATTSt = 0;               //Attention value의 상태변수
 int ATTD = 0;               //Attention 데이터 값을 받는 변수
 int i = 0;
 
-// 모기 죽은 위치
-GLfloat blood_X = 0.0f;
-GLfloat blood_Y = 0.0f;
+//// 모기 죽은 위치
+//GLfloat blood_X = 0.0f;
+//GLfloat blood_Y = 0.0f;
 
 // 모기 투명도
 GLfloat Alpha = 1.0f;
@@ -78,9 +83,6 @@ unsigned char *rock_img;
 int scissorsWidth, scissorsHeight, scissorsNrChannels;
 unsigned char *scissors_img;
 
-
-int finger_shape = 0;
-
 // HP 정보
 GLfloat HP = 190;
 LPCWSTR hpStr = TEXT("HP");
@@ -88,7 +90,6 @@ LPCWSTR hpStr = TEXT("HP");
 //립모션 손의 x y 좌표
 GLfloat hand_X = 0.0f;
 GLfloat hand_Y = 0.0f;
-
 
 // 사각형 정보
 // # 사각형 왼쪽 윗점 (g_rectX, g_rectY)
@@ -99,7 +100,7 @@ GLfloat g_rectSize = 10.0f;
 
 // 사각형 이동 벡터(속도 및 방향)
 // 속도 절대값
-GLfloat g_step = 0.0f;
+GLfloat g_step = 1.0f;
 // 현재 속도
 GLfloat g_xCurStep = g_step;
 GLfloat g_yCurStep = g_step;
@@ -112,14 +113,17 @@ GLfloat g_clipHalfWidth = g_clipBoxHeight;
 GLfloat g_clipHalfHeight = g_clipBoxHeight;
 
 GLuint g_timeStep = 17u; // 시간 간격! 값이 클수록 버벅이는 느낌
-//GLubyte *pBytes; // 데이터를 가리킬 포인터
-//GLubyte *LoadDIBitmap(const char *filename, BITMAPINFO **info);
 BITMAPINFO *info;
 GLuint texture[12];
 static GLuint Texture;
 
+int Random_sign_X = 0; 
+int Random_sign_Y = 0;
+int Random_reborn_X = 0; 
+int Random_reborn_Y = 0;
 int Random_course = 0; // 객체가 랜덤하게 이동하기 위한 랜덤 값을 넣을 변수
-int Random_speed = 0;
+double Random_speed_X = 0; // 객체의 이동 속도가 랜덤하게 변함으로써 다양한 움직임을 갖게끔
+double Random_speed_Y = 0; // 객체의 이동 속도가 랜덤하게 변함으로써 다양한 움직임을 갖게끔
 int Catch_flag = 0; // 손가락을 접었는지 확인하기 위한 변수
 int blood_img = 0; // 모기가 죽었을 때 이미지를 바꾸기위해
 
@@ -136,22 +140,19 @@ void MyListener::onFrame(const Leap::Controller & controller) { // 립모션 작동
 	Leap::InteractionBox iBox = frame.interactionBox();
 	Leap::HandList hands = frame.hands();
 
-	hands[0];
-	hands[1];
+	hands[0]; hands[1];
 
 	Leap::FingerList fingers = hands[0].fingers();
-	fingers[0];
-	fingers[1];
-	fingers[2];
-	fingers[3];
-	fingers[4];
+	fingers[0]; fingers[1];	fingers[2];	fingers[3];	fingers[4];
+
 	Leap::Vector leapPoint = fingers[1].stabilizedTipPosition();
 	Leap::Vector normalizedPoint = iBox.normalizePoint(leapPoint, false);
 
+	//손의 좌표를 구해옴
 	float appX = normalizedPoint.x * 50; // 이 숫자값 수정하면서 해야할듯
 	float appY = normalizedPoint.y * 50 - 7;
 
-	//cout << appX << ", " << appY << endl;
+	//손의 좌표를 변수에 저장
 	hand_X = appX * 3;
 	hand_Y = appY * 4;
 
@@ -160,14 +161,13 @@ void MyListener::onFrame(const Leap::Controller & controller) { // 립모션 작동
 		//   cout << "no hands detected." << endl;
 	}
 	else {
-		cout << "    " << endl;
 		if (fingers[0].isExtended() == 1 && fingers[1].isExtended() == 1) {  // 엄지와 검지가 둘 다 펴져있으면~
 			Catch_flag = Scissors;
-			//cout << Catch_flag << " 엄지 검지 !!! " << endl;
+			//cout << Catch_flag << " 엄지 + 검지 !!! " << endl;
 		}
 		else if (fingers[0].isExtended() + fingers[1].isExtended() + fingers[2].isExtended() + fingers[3].isExtended() + fingers[4].isExtended() + fingers[5].isExtended() == 0) {
 			Catch_flag = Rock;
-			//cout << Catch_flag << " 묵!!! " << endl;
+			//cout << Catch_flag << " 주먹!!! " << endl;
 		}
 	}
 }
@@ -177,8 +177,7 @@ void MyListener::onFrame(const Leap::Controller & controller) { // 립모션 작동
 // 창 크기 변경
 void ChangeWindowSize(GLsizei width, GLsizei height)
 {
-	// 높이가 0이면 0으로 나누는 오류에 빠지므로
-	// 1로 보정하여 예외 처리
+	// 높이가 0이면 0으로 나누는 오류에 빠지므로 1로 보정하여 예외 처리
 	if (height == 0) height = 1;
 
 	// 투영 행렬 설정 모드로 변경
@@ -189,15 +188,16 @@ void ChangeWindowSize(GLsizei width, GLsizei height)
 	GLfloat aspect = (GLfloat)width / (GLfloat)height;
 	g_clipHalfHeight = g_clipBoxHeight * 0.5f;
 	g_clipHalfWidth = g_clipHalfHeight * aspect;
-	glOrtho(-g_clipHalfWidth, g_clipHalfWidth,
-		-g_clipHalfHeight, g_clipHalfHeight,
-		1.0f, -1.0f);
+	glOrtho(-g_clipHalfWidth, g_clipHalfWidth,-g_clipHalfHeight, g_clipHalfHeight,1.0f, -1.0f);
 
 	// 뷰 포트(실제 보여지는 위치/크기) 설정
 	glViewport(0, 0, width, height);
 }
 
-// 립모션에서 손을 인식하여 손의 위치에 도형 생성
+
+/************************************** 도형 그리기 함수 ******************************************************/
+
+// 립모션에서 손을 인식하여 손의 위치에 주먹 생성
 void Draw_hand_point_Rock(GLfloat x, GLfloat y) {
 	glBindTexture(GL_TEXTURE_2D, texture[4]);
 	rock_img = stbi_load("주먹1.png", &rockWidth, &rockHeight, &rockNrChannels, 0);
@@ -223,7 +223,7 @@ void Draw_hand_point_Rock(GLfloat x, GLfloat y) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-// 립모션에서 손을 인식하여 손의 위치에 도형 생성
+// 립모션에서 손을 인식하여 손의 위치에 집게손 생성
 void Draw_hand_point_Scissors(GLfloat x, GLfloat y) {
 	glBindTexture(GL_TEXTURE_2D, texture[5]);
 	scissors_img = stbi_load("집게손1.png", &scissorsWidth, &scissorsHeight, &scissorsNrChannels, 0);
@@ -540,8 +540,6 @@ void Draw_difficulty() {
 	glTexCoord2i(1, 0); glVertex2i(60, 50);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
-
-
 
 	glBindTexture(GL_TEXTURE_2D, texture[8]);
 	unsigned char *data2 = stbi_load("high.png", &width, &height, &nrChannels, 0);
